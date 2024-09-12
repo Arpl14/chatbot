@@ -1,126 +1,96 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[19]:
-
-
 import os
 import streamlit as st
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
-
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from chromadb.config import Settings
+from langchain.vectorstores import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 
-
-# In[20]:
-
-
-import os
-import streamlit as st
-import google.generativeai as genai
-
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.chains import RetrievalQAWithSourcesChain
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
-from PyPDF2 import PdfReader
-from dotenv import load_dotenv
-
-
-# In[35]:
-
-
+# Load environment variables from .env file
 load_dotenv()
 os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+import google.generativeai as genai
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Extract all of the texts from the PDF files 
 def get_pdf_text(pdfs):
-  text = ""
-  for pdf in pdfs:
-    pdf_reader = PdfReader(pdf)
-
-    # iterate through all the pages in the pdf
-    for page in pdf_reader.pages:
-      text += page.extract_text()
-    
+    text = ""
+    for pdf in pdfs:
+        pdf_reader = PdfReader(pdf)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
     return text 
 
-# Split text into chunks 
+# Split text into chunks
 def generate_chunks(text):
-  text_splitter = RecursiveCharacterTextSplitter(
-      chunk_size=1000,
-      chunk_overlap=1000
-  )
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=100
+    )
+    chunks = text_splitter.split_text(text)
+    return chunks 
 
-  chunks = text_splitter.split_text(text)
-
-  return chunks 
-
-# Convert Chunks into Vectors
+# Convert Chunks into Vectors using Chroma
 def chunks_to_vectors(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-   if not os.path.exists("faiss_index/index.faiss"):
-        # Create a new FAISS index if it doesn't exist
-        vector_store = FAISS.from_texts(chunks, embeddings)
-        vector_store.save_local("faiss_index")  # Save the index
-        print("FAISS index created and saved.")
-    else:
-        # Load the existing FAISS index if it exists
-        vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-        print("FAISS index loaded successfully.")
-  # vector_store = FAISS.from_texts(chunks, embeddings)
-   #vector_store.save_local("faiss_index")
+    
+    # Create a new Chroma index
+    vector_store = Chroma(collection_name="document_embeddings", 
+                          embedding_function=embeddings, 
+                          persist_directory="chroma_index") 
+    
+    # Add the chunks to the vector store
+    for chunk in chunks:
+        vector_store.add_texts([chunk])
 
+    # Save the index (optional, Chroma persists automatically if set to do so)
+    vector_store.persist()
 
+    return vector_store
+
+# Get conversation chain using Google Generative AI
 def get_conversation():
     prompt_template = """
-    Answer the question that is asked with as much detail as you can, given the context that has been provided. If you unable to come up with an answer based on the provided context,
+    Answer the question that is asked with as much detail as you can, given the context that has been provided. If you are unable to come up with an answer based on the provided context,
     simply say "Answer cannot be provided based on the context that has been provided", instead of trying to forcibly provide an answer.\n\n
     Context: \n {context}?\n
     Question: \n {question}\n
     Answer:
     """
-
+    
     model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
-
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-
+    
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
-    return chain 
+    return chain
 
+# User input handling
 def user_input(question):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    
+    # Load the existing Chroma index
+    vector_store = Chroma(collection_name="document_embeddings", 
+                          embedding_function=embeddings, 
+                          persist_directory="chroma_index")
 
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-    docs = new_db.similarity_search(question)
+    docs = vector_store.similarity_search(question)
 
     chain = get_conversation()
 
-    response = chain(
-        {"input_documents": docs, "question": question}, return_only_outputs=True
-    )
-
+    response = chain({"input_documents": docs, "question": question}, return_only_outputs=True)
     st.write("Reply: ", response["output_text"])
 
-
-# Main app portion of the project
-# Main app portion of the project
+# Main app function
 def app():
     st.title("ASTM Documents Chatbot")
     st.sidebar.title("Upload Documents")
 
-    # Sidebar
+    # Sidebar for PDF file upload
     pdf_docs = st.sidebar.file_uploader("Upload your documents in PDF format, then click Analyze.", accept_multiple_files=True)
 
     analyze_triggered = st.sidebar.button("Chat Now")
@@ -132,7 +102,7 @@ def app():
             chunks_to_vectors(chunks)
             st.success("Done")
 
-    # User Input 
+    # User question input
     user_question = st.text_input("Ask a question based on the documents that were uploaded")
 
     if user_question:
@@ -140,25 +110,3 @@ def app():
 
 if __name__ == "__main__":
     app()
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
