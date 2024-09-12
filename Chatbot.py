@@ -70,12 +70,15 @@ def generate_chunks(text):
 # Convert Chunks into Vectors
 def chunks_to_vectors(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    try:
+    if not os.path.exists("faiss_index/index.faiss"):
+        # Create a new FAISS index if it doesn't exist
+        vector_store = FAISS.from_texts(chunks, embeddings)
+        vector_store.save_local("faiss_index")  # Save the index
+        print("FAISS index created and saved.")
+    else:
+        # Load the existing FAISS index if it exists
         vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-        vector_store.save_local("faiss_index")  # Save the updated index
-    except Exception as e:
-        print("Error in loading FAISS index:", e)
-        raise
+        print("FAISS index loaded successfully.")
   # vector_store = FAISS.from_texts(chunks, embeddings)
    #vector_store.save_local("faiss_index")
 
