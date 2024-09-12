@@ -11,5 +11,5 @@ chromadb==0.5.0 # Vector storage
 openai==1.31.1 # For embeddings
 tiktoken==0.7.0  # For embeddings 
 PyPDF2==3.0.1
-faiss-cpu==1.7.3  # or whichever version is compatible with your setup
+#faiss-cpu==1.7.3  # or whichever version is compatible with your setup
 # install markdown depenendies with: `pip install "unstructured[md]"` after install the requirements file. Leave this line commented out. 
