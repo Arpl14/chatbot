@@ -70,15 +70,10 @@ def generate_chunks(text):
 # Convert Chunks into Vectors
 def chunks_to_vectors(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    if not os.path.exists("faiss_index/index.faiss"):
-        # Create a new FAISS index if it doesn't exist
-        vector_store = FAISS.from_texts(chunks, embeddings)
-        vector_store.save_local("faiss_index")  # Save the index
-        print("FAISS index created and saved.")
-    else:
-        # Load the existing FAISS index if it exists
-        vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-        print("FAISS index loaded successfully.")
+     # Use ChromaDB to store vectors instead of FAISS
+    vector_store = Chroma.from_texts(chunks, embeddings)
+    vector_store.persist()  # Save the index to disk
+    print("ChromaDB vector store created and saved.")
   # vector_store = FAISS.from_texts(chunks, embeddings)
    #vector_store.save_local("faiss_index")
 
