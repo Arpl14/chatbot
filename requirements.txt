@@ -12,6 +12,6 @@ openai==1.31.1 # For embeddings
 tiktoken==0.7.0  # For embeddings 
 PyPDF2==3.0.1
 streamlit
-faiss-cpu==1.7.3  # Specify version if needed
+#faiss-cpu==1.7.3  # Specify version if needed
 chroma-hnswlib 
 # install markdown depenendies with: `pip install "unstructured[md]"` after install the requirements file. Leave this line commented out. 
