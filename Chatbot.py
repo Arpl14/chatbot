@@ -9,7 +9,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-
+from chromadb.utils import hnswlib
 
 
 
@@ -42,17 +42,17 @@ def generate_chunks(text):
 def chunks_to_vectors(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
-    # Create Chroma in-memory vector store (no SQLite)
+    # Use HNSWLib-based Chroma index instead of SQLite-based
     vector_store = Chroma(collection_name="document_embeddings", 
-                          embedding_function=embeddings, 
-                          persist_directory=None)  # Set persist_directory to None for in-memory
+                          embedding_function=embeddings,
+                          settings=Settings(persist_directory=None, use_hnswlib=True))  # Enable HNSWLib
     
     # Add the chunks to the vector store
     for chunk in chunks:
         vector_store.add_texts([chunk])
 
     return vector_store
-
+    
 # Get conversation chain using Google Generative AI
 def get_conversation():
     prompt_template = """
