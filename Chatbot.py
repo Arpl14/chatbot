@@ -42,17 +42,14 @@ def generate_chunks(text):
 def chunks_to_vectors(chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
-    # Create a new Chroma index
+    # Create Chroma in-memory vector store (no SQLite)
     vector_store = Chroma(collection_name="document_embeddings", 
                           embedding_function=embeddings, 
-                          persist_directory="chroma_index") 
+                          persist_directory=None)  # Set persist_directory to None for in-memory
     
     # Add the chunks to the vector store
     for chunk in chunks:
         vector_store.add_texts([chunk])
-
-    # Save the index (optional, Chroma persists automatically if set to do so)
-    vector_store.persist()
 
     return vector_store
 
