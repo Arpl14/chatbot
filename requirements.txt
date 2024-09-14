@@ -13,5 +13,6 @@ tiktoken==0.7.0  # For embeddings
 PyPDF2==3.0.1
 streamlit
 #faiss-cpu==1.7.3  # Specify version if needed
-chroma-hnswlib 
+chromadb[hnswlib]==0.5.0  # Replace this with the correct version you're using
+
 # install markdown depenendies with: `pip install "unstructured[md]"` after install the requirements file. Leave this line commented out. 
